@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Circuits & Laplace Quiz | Two-Port Networks + Transients</title>
+    <title>EENG 455 Circuits & Laplace Quiz | Auto-Submit to Google Sheets</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.7.0/math.js"></script>
     <style>
         * {
@@ -190,6 +190,11 @@
             margin: 1rem 0;
             border-color: #cfe0e8;
         }
+        .submission-status {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            color: #2c7da0;
+        }
         @media (max-width: 700px) {
             .quiz-container { padding: 1rem; }
             .question-card { padding: 1rem; }
@@ -200,7 +205,7 @@
 <div class="quiz-container">
     <h1>🔌 Circuits & Laplace Mastery</h1>
     <div class="subhead">⚡ Two-Port Networks · Laplace Transforms for RL, RC, RLC Transients</div>
-    <div class="marks-badge">📋 Total Marks: 30 | Auto-graded with answer key</div>
+    <div class="marks-badge">📋 Total Marks: 30 | Auto-graded with Google Sheets submission</div>
 
     <form id="quizForm">
         <!-- Student Information Card -->
@@ -217,10 +222,10 @@
                 </div>
                 <div class="student-field">
                     <label>Email (optional)</label>
-                    <input type="email" id="studentEmail" placeholder="for results copy">
+                    <input type="email" id="studentEmail" placeholder="for reference">
                 </div>
             </div>
-            <div class="note">✅ Your name and ID will appear in the results report.</div>
+            <div class="note">✅ Your results will be automatically recorded in the instructor's Google Sheet.</div>
         </div>
 
         <!-- ========== SECTION A: MULTIPLE CHOICE (4 x 2 = 8 marks) ========= -->
@@ -308,19 +313,25 @@
         <div class="button-group">
             <button type="button" id="submitQuiz">✅ Submit & Grade</button>
             <button type="button" id="resetQuiz" class="reset-btn">⟳ Reset All</button>
-            <button type="button" id="copyResultsBtn" class="copy-btn">📋 Copy Results to Clipboard</button>
+            <button type="button" id="copyResultsBtn" class="copy-btn">📋 Copy Results</button>
         </div>
+        <div id="submissionStatus" class="submission-status"></div>
     </form>
 
     <div id="resultArea" class="result-panel" style="display: none;">
         <div><span class="score" id="totalScoreDisplay">0</span> / <strong>30 marks</strong></div>
         <div id="detailedFeedback" class="feedback"></div>
         <div id="answerKeyDisplay" class="answer-key"></div>
-        <div class="note" style="margin-top:1rem;">✅ Use the "Copy Results" button above to save your score and answers. Then paste into an email or LMS submission.</div>
+        <div class="note" style="margin-top:1rem;">✅ Your results have been automatically sent to the instructor's Google Sheet.</div>
     </div>
 </div>
 
 <script>
+    // ==================== CONFIGURATION ====================
+    // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
+    const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+    // =======================================================
+
     // ---------- CORRECT ANSWERS DATABASE ----------
     const CORRECT = {
         mcq1: { value: "0", text: "Z12 = V1/I2 when I1 = 0" },
@@ -379,7 +390,7 @@
         return (Math.abs(nums[0] - expectedArr[0]) <= tol && Math.abs(nums[1] - expectedArr[1]) <= tol);
     }
 
-    // Get student answers object for reporting
+    // Get student answers as a formatted string
     function getAllStudentAnswers() {
         let answers = {};
         // MCQs
@@ -396,11 +407,41 @@
         return answers;
     }
 
-    // Main grading and result generation
-    function gradeQuizAndDisplay() {
+    // Send data to Google Sheets
+    async function sendToGoogleSheet(studentName, studentID, studentEmail, score, total, answersObj) {
+        if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === "PASTE_YOUR_APPS_SCRIPT_URL_HERE") {
+            console.warn("Apps Script URL not configured. Data not sent.");
+            return false;
+        }
+        const payload = {
+            name: studentName,
+            id: studentID,
+            email: studentEmail,
+            score: score,
+            total: total,
+            answers: JSON.stringify(answersObj)
+        };
+        try {
+            const response = await fetch(APPS_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors", // avoids CORS issues; still sends data
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            // With no-cors, we can't read response, but request is sent.
+            return true;
+        } catch (err) {
+            console.error("Failed to send to Google Sheet:", err);
+            return false;
+        }
+    }
+
+    // Main grading and submission
+    async function gradeQuizAndSubmit() {
         // Validate student info
         let studentName = document.getElementById('studentName').value.trim();
         let studentID = document.getElementById('studentID').value.trim();
+        let studentEmail = document.getElementById('studentEmail').value.trim();
         if (!studentName || !studentID) {
             alert("Please enter your Full Name and Student ID before submitting.");
             return;
@@ -410,7 +451,7 @@
         let feedbackLines = [];
         let answerKeyLines = [];
 
-        // ----- MCQ Grading (4 questions) -----
+        // ----- MCQ Grading -----
         const mcqList = [
             { name: 'mcq1', marks: 2, correct: CORRECT.mcq1, qLabel: "A1. Z12 definition" },
             { name: 'mcq2', marks: 2, correct: CORRECT.mcq2, qLabel: "A2. Laplace of e^{-3t}" },
@@ -431,13 +472,11 @@
         }
         feedbackLines.push(`📊 MCQs subtotal: ${totalMarks}/8`);
 
-        // ----- B5 Z-parameters -----
+        // ----- B5 -----
         let zInput = document.getElementById('shortZparam').value.trim();
-        let zCorrect = false;
         if (zInput) {
             let nums = parseNumericArray(zInput, 4);
             if (nums && nums.every((v,i) => Math.abs(v - CORRECT.shortZparam.expected[i]) <= CORRECT.shortZparam.tolerance)) {
-                zCorrect = true;
                 totalMarks += 4;
                 feedbackLines.push(`✅ B5 (Z-parameters): +4 marks (correct)`);
             } else {
@@ -448,11 +487,10 @@
         }
         answerKeyLines.push(`B5 (Z-parameters) → Correct: ${CORRECT.shortZparam.display}`);
 
-        // ----- B6 RL transient -----
+        // ----- B6 -----
         let rlExpr = document.getElementById('shortRL').value.trim();
-        let rlCorrect = false;
         if (rlExpr) {
-            rlCorrect = compareExpressions(rlExpr, CORRECT.shortRL.expectedExpr, CORRECT.shortRL.tSamples, 1e-2);
+            let rlCorrect = compareExpressions(rlExpr, CORRECT.shortRL.expectedExpr, CORRECT.shortRL.tSamples, 1e-2);
             if (rlCorrect) { totalMarks += 4; feedbackLines.push(`✅ B6 (RL current): +4 marks (correct)`); }
             else { feedbackLines.push(`❌ B6 (RL current): 0 marks. Your expression: "${rlExpr}". Expected: ${CORRECT.shortRL.display}`); }
         } else {
@@ -460,11 +498,10 @@
         }
         answerKeyLines.push(`B6 (RL current) → Correct: ${CORRECT.shortRL.display}`);
 
-        // ----- B7 RC transient -----
+        // ----- B7 -----
         let rcExpr = document.getElementById('shortRC').value.trim();
-        let rcCorrect = false;
         if (rcExpr) {
-            rcCorrect = compareExpressions(rcExpr, CORRECT.shortRC.expectedExpr, CORRECT.shortRC.tSamples, 1e-2);
+            let rcCorrect = compareExpressions(rcExpr, CORRECT.shortRC.expectedExpr, CORRECT.shortRC.tSamples, 1e-2);
             if (rcCorrect) { totalMarks += 4; feedbackLines.push(`✅ B7 (RC voltage): +4 marks (correct)`); }
             else { feedbackLines.push(`❌ B7 (RC voltage): 0 marks. Your expression: "${rcExpr}". Expected: ${CORRECT.shortRC.display}`); }
         } else {
@@ -472,11 +509,10 @@
         }
         answerKeyLines.push(`B7 (RC voltage) → Correct: ${CORRECT.shortRC.display}`);
 
-        // ----- C8 RLC long -----
+        // ----- C8 -----
         let rlcExpr = document.getElementById('longRLC').value.trim();
-        let rlcCorrect = false;
         if (rlcExpr) {
-            rlcCorrect = compareExpressions(rlcExpr, CORRECT.longRLC.expectedExpr, CORRECT.longRLC.tSamples, 5e-3);
+            let rlcCorrect = compareExpressions(rlcExpr, CORRECT.longRLC.expectedExpr, CORRECT.longRLC.tSamples, 5e-3);
             if (rlcCorrect) { totalMarks += 5; feedbackLines.push(`✅ C8 (RLC current): +5 marks (correct)`); }
             else { feedbackLines.push(`❌ C8 (RLC current): 0 marks. Your expression: "${rlcExpr}". Expected: ${CORRECT.longRLC.display}`); }
         } else {
@@ -484,11 +520,10 @@
         }
         answerKeyLines.push(`C8 (RLC current) → Correct: ${CORRECT.longRLC.display}`);
 
-        // ----- C9 Two-port ABCD -----
+        // ----- C9 -----
         let tpInput = document.getElementById('longTwoPort').value.trim();
-        let tpCorrect = false;
         if (tpInput) {
-            tpCorrect = checkTwoPort(tpInput, CORRECT.longTwoPort.expected, CORRECT.longTwoPort.tolerance);
+            let tpCorrect = checkTwoPort(tpInput, CORRECT.longTwoPort.expected, CORRECT.longTwoPort.tolerance);
             if (tpCorrect) { totalMarks += 5; feedbackLines.push(`✅ C9 (Two-port Zin & gain): +5 marks (correct)`); }
             else { feedbackLines.push(`❌ C9 (Two-port): 0 marks. Your answer: "${tpInput}". Expected: ${CORRECT.longTwoPort.display}`); }
         } else {
@@ -499,18 +534,17 @@
         feedbackLines.push(`🏆 TOTAL SCORE: ${totalMarks} / 30 marks`);
 
         // Build full report for copying
+        let answersObj = getAllStudentAnswers();
         let fullReport = `STUDENT REPORT\n`;
-        fullReport += `Name: ${studentName}\nID: ${studentID}\nEmail: ${document.getElementById('studentEmail').value.trim() || "not provided"}\n`;
+        fullReport += `Name: ${studentName}\nID: ${studentID}\nEmail: ${studentEmail || "not provided"}\n`;
         fullReport += `Date: ${new Date().toLocaleString()}\n`;
         fullReport += `Score: ${totalMarks}/30\n\n`;
         fullReport += `--- Detailed Feedback ---\n${feedbackLines.join('\n')}\n\n`;
         fullReport += `--- Answer Key ---\n${answerKeyLines.join('\n')}\n\n`;
         fullReport += `--- Your Submitted Answers ---\n`;
-        let ans = getAllStudentAnswers();
-        fullReport += `A1: ${ans.mcq1}\nA2: ${ans.mcq2}\nA3: ${ans.mcq3}\nA4: ${ans.mcq4}\n`;
-        fullReport += `B5: ${ans.b5}\nB6: ${ans.b6}\nB7: ${ans.b7}\nC8: ${ans.c8}\nC9: ${ans.c9}\n`;
+        fullReport += `A1: ${answersObj.mcq1}\nA2: ${answersObj.mcq2}\nA3: ${answersObj.mcq3}\nA4: ${answersObj.mcq4}\n`;
+        fullReport += `B5: ${answersObj.b5}\nB6: ${answersObj.b6}\nB7: ${answersObj.b7}\nC8: ${answersObj.c8}\nC9: ${answersObj.c9}\n`;
 
-        // Store for copy button
         window.latestReport = fullReport;
 
         // Display on screen
@@ -518,6 +552,17 @@
         document.getElementById('detailedFeedback').innerHTML = feedbackLines.join('\n');
         document.getElementById('answerKeyDisplay').innerHTML = "<strong>📖 ANSWER KEY (Correct answers for all questions):</strong><br>" + answerKeyLines.join('<br>');
         document.getElementById('resultArea').style.display = 'block';
+        
+        // Send to Google Sheet (asynchronously, don't block UI)
+        const submissionStatus = document.getElementById('submissionStatus');
+        submissionStatus.innerText = "Submitting results to instructor...";
+        const sent = await sendToGoogleSheet(studentName, studentID, studentEmail, totalMarks, 30, answersObj);
+        if (sent) {
+            submissionStatus.innerText = "✅ Your results have been recorded in the instructor's Google Sheet.";
+        } else {
+            submissionStatus.innerText = "⚠️ Could not automatically submit. Please use 'Copy Results' to email your instructor.";
+        }
+        
         document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -535,6 +580,7 @@
         document.getElementById('studentID').value = '';
         document.getElementById('studentEmail').value = '';
         document.getElementById('resultArea').style.display = 'none';
+        document.getElementById('submissionStatus').innerText = '';
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -551,7 +597,7 @@
     }
 
     // Event listeners
-    document.getElementById('submitQuiz').addEventListener('click', gradeQuizAndDisplay);
+    document.getElementById('submitQuiz').addEventListener('click', gradeQuizAndSubmit);
     document.getElementById('resetQuiz').addEventListener('click', resetQuiz);
     document.getElementById('copyResultsBtn').addEventListener('click', copyResultsToClipboard);
 </script>
