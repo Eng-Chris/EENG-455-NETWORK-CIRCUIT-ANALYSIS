@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuits & Laplace Quiz | Two-Port Networks + Transients</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.7.0/math.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(145deg, #e9f0f5 0%, #d9e2ec 100%);
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 30px 20px;
+            color: #1a2c3e;
+        }
+        .quiz-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.94);
+            border-radius: 2rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            padding: 1.5rem 2rem 2rem 2rem;
+        }
+        h1 {
+            font-size: 2rem;
+            margin: 0 0 0.25rem 0;
+            background: linear-gradient(135deg, #1e4b6e, #0f2c3f);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .subhead {
+            color: #2c5a74;
+            border-left: 5px solid #2c7da0;
+            padding-left: 1rem;
+            margin: 0.5rem 0 1.5rem 0;
+            font-weight: 500;
+        }
+        .marks-badge {
+            background: #1e4b6e;
+            color: white;
+            padding: 0.2rem 1rem;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+        .student-card {
+            background: #eef3f7;
+            border-left: 5px solid #2c7da0;
+            border-radius: 1.5rem;
+            padding: 1rem 1.8rem;
+            margin-bottom: 2rem;
+        }
+        .student-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            margin-top: 0.8rem;
+        }
+        .student-field {
+            flex: 1;
+            min-width: 200px;
+        }
+        .student-field label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.3rem;
+        }
+        .student-field input {
+            width: 100%;
+            padding: 0.6rem 1rem;
+            border: 1px solid #cbdde6;
+            border-radius: 1rem;
+            font-size: 0.95rem;
+        }
+        .question-card {
+            background: white;
+            border-radius: 1.5rem;
+            margin-bottom: 2rem;
+            padding: 1.2rem 1.8rem;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.05);
+            border: 1px solid #e2edf2;
+        }
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            border-bottom: 2px dashed #bdd3e4;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .q-title {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #144d66;
+        }
+        .q-marks {
+            background: #eef2f5;
+            padding: 0.2rem 0.8rem;
+            border-radius: 2rem;
+            font-weight: 600;
+        }
+        .q-text {
+            font-weight: 600;
+            margin: 0.8rem 0 0.6rem 0;
+            color: #1f5068;
+        }
+        .options {
+            margin: 0.8rem 0 0.4rem 0;
+            padding-left: 0.5rem;
+        }
+        .option {
+            margin: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        input[type="radio"], input[type="text"], textarea {
+            accent-color: #2c7da0;
+        }
+        .short-input, .long-input {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            border: 1.5px solid #cbdde6;
+            border-radius: 1rem;
+            margin-top: 0.5rem;
+        }
+        .note {
+            font-size: 0.75rem;
+            color: #6f8f9f;
+            margin-top: 0.3rem;
+        }
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 2rem 0 1rem;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #1f5e7e;
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: 0.8rem 2rem;
+            border-radius: 3rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #0f455f;
+            transform: scale(1.02);
+        }
+        .reset-btn, .copy-btn {
+            background: #5a6e7c;
+        }
+        .reset-btn:hover, .copy-btn:hover {
+            background: #3e5363;
+        }
+        .result-panel {
+            background: #eef3f7;
+            border-radius: 1.5rem;
+            padding: 1rem 1.8rem;
+            margin-top: 2rem;
+            border-left: 7px solid #2c7da0;
+        }
+        .score {
+            font-size: 1.7rem;
+            font-weight: 800;
+            color: #144d66;
+        }
+        .feedback, .answer-key {
+            background: #ffffffb3;
+            padding: 0.8rem;
+            border-radius: 1rem;
+            margin-top: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        hr {
+            margin: 1rem 0;
+            border-color: #cfe0e8;
+        }
+        @media (max-width: 700px) {
+            .quiz-container { padding: 1rem; }
+            .question-card { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="quiz-container">
+    <h1>🔌 Circuits & Laplace Mastery</h1>
+    <div class="subhead">⚡ Two-Port Networks · Laplace Transforms for RL, RC, RLC Transients</div>
+    <div class="marks-badge">📋 Total Marks: 30 | Auto-graded with answer key</div>
+
+    <form id="quizForm">
+        <!-- Student Information Card -->
+        <div class="student-card">
+            <div style="font-weight: bold; font-size: 1.1rem;">📋 Student Information</div>
+            <div class="student-row">
+                <div class="student-field">
+                    <label>Full Name *</label>
+                    <input type="text" id="studentName" placeholder="e.g., John Doe" required>
+                </div>
+                <div class="student-field">
+                    <label>Student ID *</label>
+                    <input type="text" id="studentID" placeholder="e.g., 2024001" required>
+                </div>
+                <div class="student-field">
+                    <label>Email (optional)</label>
+                    <input type="email" id="studentEmail" placeholder="for results copy">
+                </div>
+            </div>
+            <div class="note">✅ Your name and ID will appear in the results report.</div>
+        </div>
+
+        <!-- ========== SECTION A: MULTIPLE CHOICE (4 x 2 = 8 marks) ========= -->
+        <div class="question-card">
+            <div class="question-header"><span class="q-title">A1. Two-Port Z-parameters</span><span class="q-marks">2 marks</span></div>
+            <div class="q-text">For a linear two-port network, which statement correctly defines Z<sub>12</sub> ?</div>
+            <div class="options">
+                <label class="option"><input type="radio" name="mcq1" value="0"> Z<sub>12</sub> = V<sub>1</sub>/I<sub>2</sub> when I<sub>1</sub> = 0</label>
+                <label class="option"><input type="radio" name="mcq1" value="1"> Z<sub>12</sub> = V<sub>1</sub>/I<sub>2</sub> when I<sub>2</sub> = 0</label>
+                <label class="option"><input type="radio" name="mcq1" value="2"> Z<sub>12</sub> = V<sub>2</sub>/I<sub>1</sub> when I<sub>2</sub> = 0</label>
+                <label class="option"><input type="radio" name="mcq1" value="3"> Z<sub>12</sub> = V<sub>2</sub>/I<sub>1</sub> when I<sub>1</sub> = 0</label>
+            </div>
+        </div>
+
+        <div class="question-card">
+            <div class="question-header"><span class="q-title">A2. Laplace Transform of e<sup>-at</sup>u(t)</span><span class="q-marks">2 marks</span></div>
+            <div class="q-text">What is the Laplace transform of f(t) = e<sup>-3t</sup> u(t) ?</div>
+            <div class="options">
+                <label class="option"><input type="radio" name="mcq2" value="0"> 1/(s-3)</label>
+                <label class="option"><input type="radio" name="mcq2" value="1"> 3/(s+3)</label>
+                <label class="option"><input type="radio" name="mcq2" value="2"> 1/(s+3)</label>
+                <label class="option"><input type="radio" name="mcq2" value="3"> s/(s+3)</label>
+            </div>
+        </div>
+
+        <div class="question-card">
+            <div class="question-header"><span class="q-title">A3. RL Circuit Time Constant</span><span class="q-marks">2 marks</span></div>
+            <div class="q-text">For a series RL circuit with R = 4 Ω and L = 2 H, the time constant τ (in seconds) is:</div>
+            <div class="options">
+                <label class="option"><input type="radio" name="mcq3" value="0"> 0.5 s</label>
+                <label class="option"><input type="radio" name="mcq3" value="1"> 2 s</label>
+                <label class="option"><input type="radio" name="mcq3" value="2"> 8 s</label>
+                <label class="option"><input type="radio" name="mcq3" value="3"> 0.25 s</label>
+            </div>
+        </div>
+
+        <div class="question-card">
+            <div class="question-header"><span class="q-title">A4. Laplace for Capacitor (transient)</span><span class="q-marks">2 marks</span></div>
+            <div class="q-text">In Laplace domain, a capacitor C with initial voltage V<sub>c</sub>(0) is represented as:</div>
+            <div class="options">
+                <label class="option"><input type="radio" name="mcq4" value="0"> 1/(sC) + V<sub>c</sub>(0)/s</label>
+                <label class="option"><input type="radio" name="mcq4" value="1"> 1/(sC) - V<sub>c</sub>(0)/s</label>
+                <label class="option"><input type="radio" name="mcq4" value="2"> sC + V<sub>c</sub>(0)</label>
+                <label class="option"><input type="radio" name="mcq4" value="3"> 1/(sC) impedance with series voltage source V<sub>c</sub>(0)/s</label>
+            </div>
+        </div>
+
+        <!-- ========== SECTION B: SHORT ANSWER (3 x 4 = 12 marks) ========= -->
+        <div class="question-card">
+            <div class="question-header"><span class="q-title">B5. Two-port Z-parameters (T-network)</span><span class="q-marks">4 marks</span></div>
+            <div class="q-text">Consider a T-network: series arm left = 2Ω, series arm right = 3Ω, shunt middle = 4Ω. Find the Z-parameters [Z11, Z12, Z21, Z22] in order. Enter four numbers separated by commas (e.g., "6,4,4,7").</div>
+            <input type="text" class="short-input" id="shortZparam" placeholder="e.g., 6,4,4,7">
+            <div class="note">📐 Z11 = Z1+Z3 = 6, Z12=Z3=4, Z21=4, Z22=Z2+Z3=7</div>
+        </div>
+
+        <div class="question-card">
+            <div class="question-header"><span class="q-title">B6. RL transient (Laplace)</span><span class="q-marks">4 marks</span></div>
+            <div class="q-text">Series RL circuit: R = 5 Ω, L = 2 H, DC source V<sub>s</sub> = 10 V, initial current i(0) = 0. Find i(t) for t>0. Write expression in terms of 't' (use exp, *, parentheses).</div>
+            <input type="text" class="short-input" id="shortRL" placeholder="Example: 2*(1-exp(-2.5*t))">
+            <div class="note">✅ i(t) = (V/R)*(1 - e^{-Rt/L}) = 2*(1 - e^{-2.5t})</div>
+        </div>
+
+        <div class="question-card">
+            <div class="question-header"><span class="q-title">B7. RC transient (Laplace)</span><span class="q-marks">4 marks</span></div>
+            <div class="q-text">Series RC circuit: R = 4 Ω, C = 0.5 F, source V<sub>s</sub> = 12 V, initial v<sub>c</sub>(0)=0. Find v<sub>c</sub>(t) using Laplace. (Write function of t, using exp).</div>
+            <input type="text" class="short-input" id="shortRC" placeholder="e.g., 12*(1-exp(-0.5*t))">
+            <div class="note">📌 vc(t) = V_s*(1 - e^{-t/(RC)}) = 12*(1 - e^{-0.5t})</div>
+        </div>
+
+        <!-- ========== SECTION C: LONGER PROBLEMS (2 x 5 = 10 marks) ========= -->
+        <div class="question-card">
+            <div class="question-header"><span class="q-title">C8. RLC Series Transient (Laplace)</span><span class="q-marks">5 marks</span></div>
+            <div class="q-text">Series RLC: R = 2 Ω, L = 1 H, C = 0.2 F, V<sub>s</sub> = 10 V. Zero initial conditions. Find i(t) for t>0. Write expression using 't' (cos, sin, exp).</div>
+            <input type="text" class="long-input" id="longRLC" placeholder="5 - 5*exp(-t)*(cos(2*t) + 0.5*sin(2*t))">
+            <div class="note">🔧 Underdamped: final current = 5A, α=1, ω<sub>d</sub>=2 → i(t)=5 - 5e^{-t}[cos(2t)+0.5 sin(2t)]</div>
+        </div>
+
+        <div class="question-card">
+            <div class="question-header"><span class="q-title">C9. Two-Port ABCD Parameters & Termination</span><span class="q-marks">5 marks</span></div>
+            <div class="q-text">A two-port has ABCD: A=2, B=4Ω, C=0.2 S, D=1. Load Z<sub>L</sub> = 5Ω. Find Z<sub>in</sub> and voltage gain V<sub>2</sub>/V<sub>1</sub>. Enter both separated by comma: Zin, Gain</div>
+            <input type="text" class="long-input" id="longTwoPort" placeholder="7,0.35714">
+            <div class="note">🧮 Zin = (2*5+4)/(0.2*5+1)=7Ω; Gain = 1/(2+4/5)=0.35714</div>
+        </div>
+
+        <div class="button-group">
+            <button type="button" id="submitQuiz">✅ Submit & Grade</button>
+            <button type="button" id="resetQuiz" class="reset-btn">⟳ Reset All</button>
+            <button type="button" id="copyResultsBtn" class="copy-btn">📋 Copy Results to Clipboard</button>
+        </div>
+    </form>
+
+    <div id="resultArea" class="result-panel" style="display: none;">
+        <div><span class="score" id="totalScoreDisplay">0</span> / <strong>30 marks</strong></div>
+        <div id="detailedFeedback" class="feedback"></div>
+        <div id="answerKeyDisplay" class="answer-key"></div>
+        <div class="note" style="margin-top:1rem;">✅ Use the "Copy Results" button above to save your score and answers. Then paste into an email or LMS submission.</div>
+    </div>
+</div>
+
+<script>
+    // ---------- CORRECT ANSWERS DATABASE ----------
+    const CORRECT = {
+        mcq1: { value: "0", text: "Z12 = V1/I2 when I1 = 0" },
+        mcq2: { value: "2", text: "1/(s+3)" },
+        mcq3: { value: "0", text: "0.5 s" },
+        mcq4: { value: "3", text: "1/(sC) impedance with series voltage source Vc(0)/s" },
+        shortZparam: { type: "numericArray", expected: [6,4,4,7], tolerance: 0.01, display: "6, 4, 4, 7" },
+        shortRL: { type: "expression", expectedExpr: "2*(1-exp(-2.5*t))", tSamples: [0.05,0.2,0.8], display: "2*(1 - e^{-2.5t})" },
+        shortRC: { type: "expression", expectedExpr: "12*(1-exp(-0.5*t))", tSamples: [0.1,0.5,1.2], display: "12*(1 - e^{-0.5t})" },
+        longRLC: { type: "expression", expectedExpr: "5-5*exp(-t)*(cos(2*t)+0.5*sin(2*t))", tSamples: [0.05,0.3,0.7,1.2], display: "5 - 5e^{-t}[cos(2t) + 0.5 sin(2t)]" },
+        longTwoPort: { type: "twoPortNumeric", expected: [7, 0.357142857], tolerance: 0.001, display: "Zin = 7 Ω, Gain = 0.35714" }
+    };
+
+    // Helper: evaluate expression at given t values
+    function evaluateExpression(exprStr, tValues) {
+        try {
+            const node = math.parse(exprStr);
+            const compiled = node.compile();
+            return tValues.map(t => {
+                const scope = { t: t };
+                const val = compiled.evaluate(scope);
+                return (typeof val === 'number' && isFinite(val)) ? val : NaN;
+            });
+        } catch(e) { return null; }
+    }
+
+    function compareExpressions(userExpr, expectedExpr, tSamples, tol=1e-3) {
+        const userVals = evaluateExpression(userExpr, tSamples);
+        const expectedVals = evaluateExpression(expectedExpr, tSamples);
+        if (!userVals || !expectedVals) return false;
+        if (userVals.length !== expectedVals.length) return false;
+        for (let i=0; i<userVals.length; i++) {
+            if (isNaN(userVals[i]) || isNaN(expectedVals[i])) return false;
+            if (Math.abs(userVals[i] - expectedVals[i]) > tol) return false;
+        }
+        return true;
+    }
+
+    function parseNumericArray(str, length) {
+        let cleaned = str.replace(/\s/g, '');
+        let parts = cleaned.split(',').filter(p => p.trim() !== '');
+        if (parts.length === 0) parts = cleaned.split(/\s+/);
+        let numbers = [];
+        for (let p of parts) {
+            let num = parseFloat(p);
+            if (isNaN(num)) return null;
+            numbers.push(num);
+        }
+        if (numbers.length !== length) return null;
+        return numbers;
+    }
+
+    function checkTwoPort(userStr, expectedArr, tol) {
+        let nums = parseNumericArray(userStr, 2);
+        if (!nums) return false;
+        return (Math.abs(nums[0] - expectedArr[0]) <= tol && Math.abs(nums[1] - expectedArr[1]) <= tol);
+    }
+
+    // Get student answers object for reporting
+    function getAllStudentAnswers() {
+        let answers = {};
+        // MCQs
+        answers.mcq1 = document.querySelector('input[name="mcq1"]:checked')?.parentElement.innerText.trim() || "No answer";
+        answers.mcq2 = document.querySelector('input[name="mcq2"]:checked')?.parentElement.innerText.trim() || "No answer";
+        answers.mcq3 = document.querySelector('input[name="mcq3"]:checked')?.parentElement.innerText.trim() || "No answer";
+        answers.mcq4 = document.querySelector('input[name="mcq4"]:checked')?.parentElement.innerText.trim() || "No answer";
+        // Short answers
+        answers.b5 = document.getElementById('shortZparam').value.trim() || "(empty)";
+        answers.b6 = document.getElementById('shortRL').value.trim() || "(empty)";
+        answers.b7 = document.getElementById('shortRC').value.trim() || "(empty)";
+        answers.c8 = document.getElementById('longRLC').value.trim() || "(empty)";
+        answers.c9 = document.getElementById('longTwoPort').value.trim() || "(empty)";
+        return answers;
+    }
+
+    // Main grading and result generation
+    function gradeQuizAndDisplay() {
+        // Validate student info
+        let studentName = document.getElementById('studentName').value.trim();
+        let studentID = document.getElementById('studentID').value.trim();
+        if (!studentName || !studentID) {
+            alert("Please enter your Full Name and Student ID before submitting.");
+            return;
+        }
+
+        let totalMarks = 0;
+        let feedbackLines = [];
+        let answerKeyLines = [];
+
+        // ----- MCQ Grading (4 questions) -----
+        const mcqList = [
+            { name: 'mcq1', marks: 2, correct: CORRECT.mcq1, qLabel: "A1. Z12 definition" },
+            { name: 'mcq2', marks: 2, correct: CORRECT.mcq2, qLabel: "A2. Laplace of e^{-3t}" },
+            { name: 'mcq3', marks: 2, correct: CORRECT.mcq3, qLabel: "A3. RL time constant" },
+            { name: 'mcq4', marks: 2, correct: CORRECT.mcq4, qLabel: "A4. Capacitor Laplace model" }
+        ];
+        for (let q of mcqList) {
+            let selected = document.querySelector(`input[name="${q.name}"]:checked`);
+            let isCorrect = (selected && selected.value === q.correct.value);
+            let studentAns = selected ? selected.parentElement.innerText.trim() : "No answer selected";
+            if (isCorrect) {
+                totalMarks += q.marks;
+                feedbackLines.push(`✅ ${q.qLabel}: +${q.marks} marks (correct)`);
+            } else {
+                feedbackLines.push(`❌ ${q.qLabel}: 0 marks. Your answer: "${studentAns}". Correct: ${q.correct.text}`);
+            }
+            answerKeyLines.push(`${q.qLabel} → Correct: ${q.correct.text}`);
+        }
+        feedbackLines.push(`📊 MCQs subtotal: ${totalMarks}/8`);
+
+        // ----- B5 Z-parameters -----
+        let zInput = document.getElementById('shortZparam').value.trim();
+        let zCorrect = false;
+        if (zInput) {
+            let nums = parseNumericArray(zInput, 4);
+            if (nums && nums.every((v,i) => Math.abs(v - CORRECT.shortZparam.expected[i]) <= CORRECT.shortZparam.tolerance)) {
+                zCorrect = true;
+                totalMarks += 4;
+                feedbackLines.push(`✅ B5 (Z-parameters): +4 marks (correct)`);
+            } else {
+                feedbackLines.push(`❌ B5 (Z-parameters): 0 marks. Your answer: "${zInput}". Expected: ${CORRECT.shortZparam.display}`);
+            }
+        } else {
+            feedbackLines.push(`❌ B5 (Z-parameters): 0 marks. No answer. Expected: ${CORRECT.shortZparam.display}`);
+        }
+        answerKeyLines.push(`B5 (Z-parameters) → Correct: ${CORRECT.shortZparam.display}`);
+
+        // ----- B6 RL transient -----
+        let rlExpr = document.getElementById('shortRL').value.trim();
+        let rlCorrect = false;
+        if (rlExpr) {
+            rlCorrect = compareExpressions(rlExpr, CORRECT.shortRL.expectedExpr, CORRECT.shortRL.tSamples, 1e-2);
+            if (rlCorrect) { totalMarks += 4; feedbackLines.push(`✅ B6 (RL current): +4 marks (correct)`); }
+            else { feedbackLines.push(`❌ B6 (RL current): 0 marks. Your expression: "${rlExpr}". Expected: ${CORRECT.shortRL.display}`); }
+        } else {
+            feedbackLines.push(`❌ B6 (RL current): 0 marks. No answer. Expected: ${CORRECT.shortRL.display}`);
+        }
+        answerKeyLines.push(`B6 (RL current) → Correct: ${CORRECT.shortRL.display}`);
+
+        // ----- B7 RC transient -----
+        let rcExpr = document.getElementById('shortRC').value.trim();
+        let rcCorrect = false;
+        if (rcExpr) {
+            rcCorrect = compareExpressions(rcExpr, CORRECT.shortRC.expectedExpr, CORRECT.shortRC.tSamples, 1e-2);
+            if (rcCorrect) { totalMarks += 4; feedbackLines.push(`✅ B7 (RC voltage): +4 marks (correct)`); }
+            else { feedbackLines.push(`❌ B7 (RC voltage): 0 marks. Your expression: "${rcExpr}". Expected: ${CORRECT.shortRC.display}`); }
+        } else {
+            feedbackLines.push(`❌ B7 (RC voltage): 0 marks. No answer. Expected: ${CORRECT.shortRC.display}`);
+        }
+        answerKeyLines.push(`B7 (RC voltage) → Correct: ${CORRECT.shortRC.display}`);
+
+        // ----- C8 RLC long -----
+        let rlcExpr = document.getElementById('longRLC').value.trim();
+        let rlcCorrect = false;
+        if (rlcExpr) {
+            rlcCorrect = compareExpressions(rlcExpr, CORRECT.longRLC.expectedExpr, CORRECT.longRLC.tSamples, 5e-3);
+            if (rlcCorrect) { totalMarks += 5; feedbackLines.push(`✅ C8 (RLC current): +5 marks (correct)`); }
+            else { feedbackLines.push(`❌ C8 (RLC current): 0 marks. Your expression: "${rlcExpr}". Expected: ${CORRECT.longRLC.display}`); }
+        } else {
+            feedbackLines.push(`❌ C8 (RLC current): 0 marks. No answer. Expected: ${CORRECT.longRLC.display}`);
+        }
+        answerKeyLines.push(`C8 (RLC current) → Correct: ${CORRECT.longRLC.display}`);
+
+        // ----- C9 Two-port ABCD -----
+        let tpInput = document.getElementById('longTwoPort').value.trim();
+        let tpCorrect = false;
+        if (tpInput) {
+            tpCorrect = checkTwoPort(tpInput, CORRECT.longTwoPort.expected, CORRECT.longTwoPort.tolerance);
+            if (tpCorrect) { totalMarks += 5; feedbackLines.push(`✅ C9 (Two-port Zin & gain): +5 marks (correct)`); }
+            else { feedbackLines.push(`❌ C9 (Two-port): 0 marks. Your answer: "${tpInput}". Expected: ${CORRECT.longTwoPort.display}`); }
+        } else {
+            feedbackLines.push(`❌ C9 (Two-port): 0 marks. No answer. Expected: ${CORRECT.longTwoPort.display}`);
+        }
+        answerKeyLines.push(`C9 (Two-port) → Correct: ${CORRECT.longTwoPort.display}`);
+
+        feedbackLines.push(`🏆 TOTAL SCORE: ${totalMarks} / 30 marks`);
+
+        // Build full report for copying
+        let fullReport = `STUDENT REPORT\n`;
+        fullReport += `Name: ${studentName}\nID: ${studentID}\nEmail: ${document.getElementById('studentEmail').value.trim() || "not provided"}\n`;
+        fullReport += `Date: ${new Date().toLocaleString()}\n`;
+        fullReport += `Score: ${totalMarks}/30\n\n`;
+        fullReport += `--- Detailed Feedback ---\n${feedbackLines.join('\n')}\n\n`;
+        fullReport += `--- Answer Key ---\n${answerKeyLines.join('\n')}\n\n`;
+        fullReport += `--- Your Submitted Answers ---\n`;
+        let ans = getAllStudentAnswers();
+        fullReport += `A1: ${ans.mcq1}\nA2: ${ans.mcq2}\nA3: ${ans.mcq3}\nA4: ${ans.mcq4}\n`;
+        fullReport += `B5: ${ans.b5}\nB6: ${ans.b6}\nB7: ${ans.b7}\nC8: ${ans.c8}\nC9: ${ans.c9}\n`;
+
+        // Store for copy button
+        window.latestReport = fullReport;
+
+        // Display on screen
+        document.getElementById('totalScoreDisplay').innerText = totalMarks;
+        document.getElementById('detailedFeedback').innerHTML = feedbackLines.join('\n');
+        document.getElementById('answerKeyDisplay').innerHTML = "<strong>📖 ANSWER KEY (Correct answers for all questions):</strong><br>" + answerKeyLines.join('<br>');
+        document.getElementById('resultArea').style.display = 'block';
+        document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function resetQuiz() {
+        const radioNames = ['mcq1','mcq2','mcq3','mcq4'];
+        radioNames.forEach(name => {
+            document.querySelectorAll(`input[name="${name}"]`).forEach(r => r.checked = false);
+        });
+        document.getElementById('shortZparam').value = '';
+        document.getElementById('shortRL').value = '';
+        document.getElementById('shortRC').value = '';
+        document.getElementById('longRLC').value = '';
+        document.getElementById('longTwoPort').value = '';
+        document.getElementById('studentName').value = '';
+        document.getElementById('studentID').value = '';
+        document.getElementById('studentEmail').value = '';
+        document.getElementById('resultArea').style.display = 'none';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function copyResultsToClipboard() {
+        if (!window.latestReport) {
+            alert("Please submit the quiz first to generate results.");
+            return;
+        }
+        navigator.clipboard.writeText(window.latestReport).then(() => {
+            alert("Results copied to clipboard! You can paste them into an email or LMS.");
+        }).catch(() => {
+            alert("Could not copy. Please select the text manually.");
+        });
+    }
+
+    // Event listeners
+    document.getElementById('submitQuiz').addEventListener('click', gradeQuizAndDisplay);
+    document.getElementById('resetQuiz').addEventListener('click', resetQuiz);
+    document.getElementById('copyResultsBtn').addEventListener('click', copyResultsToClipboard);
+</script>
+</body>
+</html>
